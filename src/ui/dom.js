@@ -21,3 +21,9 @@ export function h(tag, attrs = {}, children = []) {
   }
   return el;
 }
+
+// Decorative icon from the CSS icon set: icon("plus") or icon("note", { small: true }).
+export function icon(name, { small = false } = {}) {
+  const sizeClass = small ? " icon--sm" : "";
+  return h("span", { class: `icon${sizeClass} icon--${name}`, "aria-hidden": "true" });
+}
