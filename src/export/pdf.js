@@ -59,7 +59,7 @@ export function toDrawableText(text) {
     .trim();
 }
 
-export const getExtraTitle = ({ description }) =>
+const getExtraTitle = ({ description }) =>
   toDrawableText(description ?? "") || EXTRA_FALLBACK_TITLE;
 
 const getLineHeightMm = (size) => size * MM_PER_PT * LINE_HEIGHT_RATIO;

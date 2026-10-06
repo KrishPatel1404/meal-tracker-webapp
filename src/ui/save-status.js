@@ -76,11 +76,6 @@ async function track(promise, retry) {
   }
 }
 
-// Every UI write goes through here. The pill reflects outstanding writes; the promise passes through.
-export function trackSave(promise) {
-  return track(promise, null);
-}
-
 // Runs writes one after another, so quick repeat taps reach the server in tap order.
 export function createSaveQueue() {
   let tail = Promise.resolve();

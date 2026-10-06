@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Single-user, phone-first daily meal checklist. Vanilla JS + Vite, talks straight to Supabase (Postgres + Auth + Storage), hosted as a Render static site. `PLAN.md` is the original spec and module contracts; `README.md` covers setup, the secret link and deploy.
+Single-user, phone-first daily meal checklist. Vanilla JS + Vite, talks straight to Supabase (Postgres + Auth + Storage), hosted as a Render static site. `README.md` covers setup, the secret link and deploy.
 
 ## Commands
 
@@ -30,7 +30,7 @@ Keep e2e runs light: one run before handing over at most. The owner tests manual
 - **Layers:** `data/*` is the only code that touches Supabase and throws typed errors (`AuthError`, `NetworkError`, `SaveError`, `LoadError` via `unwrap`/`toTypedError` in `data/errors.js`). `lib/*` is pure logic (dates, scoring, image compression). `ui/*` builds DOM with `h()` / `icon()` from `ui/dom.js`; views are `mountX(root, opts) -> unmount()` and `main.js` is a tiny in-memory router (today/day view vs history).
 - **Logical day:** before `DAY_RESET_HOUR` (3am local) you're still on the previous day (`lib/day.js`). Dates are `YYYY-MM-DD` strings in local time; the day view schedules a timer to the next reset and re-checks on `visibilitychange`.
 - **Plan snapshots:** `src/plan/meal-plan.js` is the meal plan; bump `PLAN_VERSION` when editing. `ensureDay` upserts the `days` row with `ignoreDuplicates`, so a day's `plan_snapshot` is written once and never overwritten. Everything that renders or scores a past day (score, history, export) must use that day's `plan_snapshot`, not `MEAL_PLAN`. Workout-only meals hidden on rest days keep their data and don't count.
-- **Autosave (`ui/save-status.js`):** module singleton behind the header pill. Every UI write goes through `trackSave` / `settleSave(promise, retry)`; failed typed writes keep their `retry` and are re-sent on the next write, the `online` event, and `flushPendingSaves()` (called on leaving a day / `pagehide`). Text fields use `debounceTextSave`; per-row ordering uses `createSaveQueue`. Retries re-send the latest values, so they're always safe to repeat.
+- **Autosave (`ui/save-status.js`):** module singleton behind the header pill. Every UI write goes through `settleSave(promise, retry)`; failed typed writes keep their `retry` and are re-sent on the next write, the `online` event, and `flushPendingSaves()` (called on leaving a day / `pagehide`). Text fields use `debounceTextSave`; per-row ordering uses `createSaveQueue`. Retries re-send the latest values, so they're always safe to repeat.
 - **Photos:** compressed client-side (`lib/image.js`, WebP with JPEG fallback for Safari), stored in the private `meal-photos` bucket at `<user_id>/<date>/<ownerKey>.<ext>` (ext from `blob.type`), read through batched, cached signed URLs.
 - **Export:** `ui/export-sheet.js` lazy-imports `export/pdf.js` so jsPDF stays out of the main bundle. Keep it that way.
 - **PWA:** `public/sw.js` is hand-written (no plugin): navigations served from the cached shell and refreshed in the background, hashed `/assets/*` cache-first, cross-origin (Supabase) never cached. Bump `CACHE_NAME` when changing its caching logic. Registered only in production (`src/pwa.js`).
@@ -38,7 +38,7 @@ Keep e2e runs light: one run before handing over at most. The owner tests manual
 
 ## Database
 
-Schema, RLS (owner-only on every table and the storage bucket) and the `ping()` keepalive RPC are in `supabase/migrations/0001_init.sql`. The project is live; inspect before changing and add a new migration file rather than editing `0001`.
+Schema, RLS (owner-only on every table and the storage bucket) and the `ping()` keepalive RPC are in `supabase/migrations/0001_init.sql` (local only, gitignored). The project is live; inspect before changing and add a new migration file rather than editing `0001`.
 
 ## Tests touching the real database
 

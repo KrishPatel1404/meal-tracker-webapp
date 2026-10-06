@@ -35,7 +35,7 @@ Fill in `.env`:
 | `VITE_OWNER_EMAIL`       | Email of the single owner user                                                                                         |
 | `OWNER_TOKEN`            | The secret link token (the owner's password). Not bundled into the app (no `VITE_` prefix), only used by the e2e tests |
 
-The database schema is in `supabase/migrations/0001_init.sql` (tables, RLS, storage bucket and policies, `ping()` RPC).
+The database schema lives locally in `supabase/migrations/0001_init.sql` (gitignored, not in the repo) (tables, RLS, storage bucket and policies, `ping()` RPC).
 
 ## Commands
 

@@ -20,7 +20,6 @@
       .app-header__actions
     .page-title               big screen title at the top of .page ("Today's plate", "History")
     .chip                     small pill (time, progress). button.chip / a.chip get a 44px hit area
-    .chip--outline            outlined pill (progress like "3 / 4")
     .chip--accent             blue tinted pill
     .icon-button              44px round icon button (needs aria-label)
     .icon-button--plain       transparent background
@@ -29,7 +28,7 @@
 
   Surfaces
     .card                     white rounded card (combine: "card meal-card", "card extra-row" ...)
-    .tag  .tag--substitute  .tag--extra     tiny inline labels ("Optional", "Something else")
+    .tag  .tag--substitute  tiny inline labels ("Optional", "Something else")
 
   Meal card  (<article class="card meal-card">)
     .meal-card--done          ate as planned (blue wash)
@@ -54,7 +53,7 @@
 
   Food list
     .food-list  .food-list__item
-    .plan-notes  .plan-notes__item       quiet plan notes
+    .plan-notes                         quiet plan notes
 
   Switch  (<label class="switch"> text, <input class="switch__input visually-hidden" type="checkbox" role="switch">, track)
     .switch  .switch__text  .switch__label  .switch__hint  .switch__input  .switch__track
@@ -63,7 +62,6 @@
     .btn                      48px pill
     .btn--primary             black pill (white in dark)
     .btn--secondary           grey fill
-    .btn--ghost               transparent
     .btn--substitute          purple tint ("Ate something else" when active)
     .btn--extra               orange tint ("Add food")
     .btn--sm  .btn--block
@@ -92,7 +90,7 @@
   Extras
     .extras                   list wrapper
     .extra-row                "card extra-row"
-      .extra-row__badge  .extra-row__body  .extra-row__title  .extra-row__note  .extra-row__delete
+      .extra-row__badge  .extra-row__body  .extra-row__note  .extra-row__delete
 
   History
     .contrib                  wrapper
@@ -103,7 +101,6 @@
       .contrib__cell--blank   placeholder before the first day / after today
       .contrib__legend
     .stat-grid  .stat-tile  .stat-tile__label  .stat-tile__value  .stat-tile__unit
-    .progress  .progress__bar   thin bar, set --progress: 0..1 on .progress
 
   Link screen
     .link-screen  .link-screen__card  .link-screen__icon  .link-screen__title
@@ -276,11 +273,6 @@
   background: var(--color-surface-strong);
 }
 
-.chip--outline {
-  background: transparent;
-  box-shadow: inset 0 0 0 2px var(--color-text);
-}
-
 .chip--accent {
   background: var(--color-accent-soft);
   color: var(--color-accent-text);
@@ -345,11 +337,6 @@
 .tag--substitute {
   background: var(--color-substitute-soft);
   color: var(--color-substitute-text);
-}
-
-.tag--extra {
-  background: var(--color-extra-soft);
-  color: var(--color-extra-text);
 }
 
 /* ---------- Meal card ---------- */
@@ -693,15 +680,6 @@
 .btn--secondary {
   background: var(--button-secondary-bg);
   color: var(--color-text);
-}
-
-.btn--ghost {
-  background: transparent;
-  color: var(--color-text);
-}
-
-.btn--ghost:active {
-  background: var(--color-surface-muted);
 }
 
 .btn--substitute {
@@ -1081,10 +1059,6 @@ body.is-offline
   padding-top: var(--space-2);
 }
 
-.extra-row__title {
-  font: var(--text-body-strong);
-}
-
 .extra-row__note {
   font: var(--text-small);
   color: var(--color-text-secondary);
@@ -1216,22 +1190,6 @@ button.contrib__cell::before {
   font: var(--text-small);
   letter-spacing: normal;
   color: var(--color-text-secondary);
-}
-
-.progress {
-  height: var(--progress-height);
-  overflow: hidden;
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-strong);
-}
-
-.progress__bar {
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-accent);
-  transform: scaleX(var(--progress, 0));
-  transform-origin: left;
-  transition: transform var(--duration-slow) var(--ease-standard);
 }
 
 /* ---------- Link screen ---------- */

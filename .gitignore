@@ -5,9 +5,10 @@ dist/
 test-results/
 playwright-report/
 .DS_Store
-.claude/settings.local.json
+.claude/
 .env.*.local
 coverage/
 *.log
 .idea/
 .vscode/
+supabase/
