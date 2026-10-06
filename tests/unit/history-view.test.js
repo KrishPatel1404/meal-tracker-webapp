@@ -12,13 +12,18 @@ vi.mock("../../src/data/days.js", () => ({ getDaysInRange: vi.fn() }));
 // Tue 6 Oct 2026, midday local time.
 const NOW = new Date(2026, 9, 6, 12, 0, 0);
 const TODAY = "2026-10-06";
-// Monday of today's week minus 51 weeks.
-const GRID_START = "2025-10-13";
+// Monday of today's week minus 51 weeks: the earliest week that can be on the grid.
+const LOAD_START = "2025-10-13";
+// Monday of the week holding the first logged day (Wed 30 Sep).
+const GRID_START = "2026-09-28";
+const TODAY_WEEK_START = "2026-10-05";
 const DAYS_PER_WEEK = 7;
 const TOTAL_SLOTS = HISTORY_WEEKS * DAYS_PER_WEEK;
-// Wed 7 to Sun 11 Oct are still to come in today's week.
-const FUTURE_SLOTS_IN_LAST_WEEK = 5;
-const TODAY_SLOT = TOTAL_SLOTS - FUTURE_SLOTS_IN_LAST_WEEK - 1;
+// Today is the Tuesday of the grid's second column.
+const TODAY_SLOT = DAYS_PER_WEEK + 1;
+const FUTURE_SLOTS = TOTAL_SLOTS - TODAY_SLOT - 1;
+// Today as the Tuesday of the last column, once the grid has rolled.
+const LAST_COLUMN_TODAY_SLOT = TOTAL_SLOTS - DAYS_PER_WEEK + 1;
 const WEEKDAY_PREFIXES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const REST_REQUIRED = ["meal-1", "meal-2", "meal-5"];
@@ -57,8 +62,8 @@ const FAKE_RANGE = {
 };
 
 const EXPECTED_CELLS = {
-  "2025-10-14": { label: "Tue 14 Oct: nothing logged", level: SHADE_LEVEL.NONE },
   // ICU builds differ on "Sep" vs "Sept" for en-GB.
+  "2026-09-28": { label: /^Mon 28 Sept?: nothing logged$/, level: SHADE_LEVEL.NONE },
   "2026-09-30": { label: /^Wed 30 Sept?: 0 of 3 meals$/, level: SHADE_LEVEL.NONE },
   "2026-10-01": { label: "Thu 1 Oct: 4 of 5 meals", level: SHADE_LEVEL.HIGH },
   "2026-10-02": { label: "Fri 2 Oct: 2 of 3 meals", level: SHADE_LEVEL.MID },
@@ -104,16 +109,34 @@ describe("mountHistoryView data loading", () => {
   it("loads the whole grid range with one getDaysInRange call", async () => {
     await mountLoaded();
     expect(getDaysInRange).toHaveBeenCalledTimes(1);
-    expect(getDaysInRange).toHaveBeenCalledWith(GRID_START, TODAY);
+    expect(getDaysInRange).toHaveBeenCalledWith(LOAD_START, TODAY);
   });
 });
 
 describe("contribution grid layout", () => {
-  it(`has ${HISTORY_WEEKS} week columns of 7 slots, starting on a Monday`, async () => {
+  it(`has ${HISTORY_WEEKS} week columns of 7 slots, starting on the first logged week's Monday`, async () => {
     await mountLoaded();
     const all = slots();
     expect(all).toHaveLength(TOTAL_SLOTS);
     expect(all[0].dataset.date).toBe(GRID_START);
+  });
+
+  it("starts at today's week when nothing is logged yet", async () => {
+    getDaysInRange.mockResolvedValue({ days: [], mealLogs: [], extras: [] });
+    await mountLoaded();
+    expect(slots()[0].dataset.date).toBe(TODAY_WEEK_START);
+    expect(slots()[1].getAttribute("aria-current")).toBe("date");
+  });
+
+  it(`rolls so today's week is the last column once ${HISTORY_WEEKS} weeks are logged`, async () => {
+    getDaysInRange.mockResolvedValue({ days: [day(LOAD_START, false)], mealLogs: [], extras: [] });
+    await mountLoaded();
+    expect(slots()).toHaveLength(TOTAL_SLOTS);
+    expect(slots()[0].dataset.date).toBe(LOAD_START);
+    expect(slots()[LAST_COLUMN_TODAY_SLOT].getAttribute("aria-current")).toBe("date");
+    // 1 Nov 2025 is in column 3 (Mon 27 Oct), too close for a leading "Oct" label on column 1.
+    expect(root.querySelector(".contrib__month").textContent).toBe("Nov");
+    expect(root.querySelector(".contrib__month").style.gridColumn).toBe("3");
   });
 
   it("puts every weekday in the same row (Mon top, Sun bottom) across all weeks", async () => {
@@ -126,13 +149,13 @@ describe("contribution grid layout", () => {
         new RegExp(`^${expectedPrefix} `),
       );
     }
-    expect(buttons).toHaveLength(TOTAL_SLOTS - FUTURE_SLOTS_IN_LAST_WEEK);
+    expect(buttons).toHaveLength(TODAY_SLOT + 1);
   });
 
-  it("renders the rest of today's week as hidden blanks, not buttons", async () => {
+  it("renders every day after today as hidden blanks, not buttons", async () => {
     await mountLoaded();
     const tail = slots().slice(TODAY_SLOT + 1);
-    expect(tail).toHaveLength(FUTURE_SLOTS_IN_LAST_WEEK);
+    expect(tail).toHaveLength(FUTURE_SLOTS);
     for (const slot of tail) {
       expect(slot.tagName).toBe("SPAN");
       expect(slot.classList.contains("contrib__cell--blank")).toBe(true);
@@ -140,7 +163,7 @@ describe("contribution grid layout", () => {
     }
   });
 
-  it("marks only today with aria-current, in the last column", async () => {
+  it("marks only today with aria-current, in the second column", async () => {
     await mountLoaded();
     const current = root.querySelectorAll('[aria-current="date"]');
     expect(current).toHaveLength(1);
@@ -148,16 +171,19 @@ describe("contribution grid layout", () => {
     expect(slots()[TODAY_SLOT]).toBe(current[0]);
   });
 
-  it("labels each column that holds the 1st of a month, skipping a cramped leading label", async () => {
+  it("labels each column that holds the 1st of a month, from the first column", async () => {
     await mountLoaded();
     const months = [...root.querySelectorAll(".contrib__month")].map((label) => [
       label.textContent,
       label.style.gridColumn,
     ]);
-    // 1 Nov 2025 is in week 3 (Mon 27 Oct), too close for an "Oct" label on column 1.
-    expect(months[0]).toEqual(["Nov", "3"]);
-    // 1 Oct 2026 is in the week of Mon 28 Sep, the second-to-last column.
-    expect(months.at(-1)).toEqual(["Oct", String(HISTORY_WEEKS - 1)]);
+    // 1 Oct 2026 is in the first column (Mon 28 Sep), so no extra leading label.
+    expect(months[0]).toEqual(["Oct", "1"]);
+    // 1 Nov 2026 is the Sunday of the week of Mon 26 Oct, column 5.
+    expect(months[1]).toEqual(["Nov", "5"]);
+    // 1 Sep 2027 is in the week of Mon 30 Aug, column 49.
+    // ICU builds differ on "Sep" vs "Sept" for en-GB.
+    expect(months.at(-1)).toEqual([expect.stringMatching(/^Sept?$/), "49"]);
     expect(months).toHaveLength(12);
   });
 });

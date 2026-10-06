@@ -94,7 +94,7 @@
 
   History
     .contrib                  wrapper
-      .contrib__scroll        horizontal scroller (set scrollLeft to the end in JS)
+      .contrib__scroll        horizontal scroller (scrolled to today in JS)
       .contrib__months  .contrib__month   month labels (set grid-column on each)
       .contrib__grid          7 rows, weeks as columns (grid-auto-flow: column)
       .contrib__cell          data-level="0..4"; aria-current="date" for today

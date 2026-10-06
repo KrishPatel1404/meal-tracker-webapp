@@ -26,8 +26,8 @@ const COPY = Object.freeze({
   RETRY: "Try again",
   STREAK: "Current streak",
   DAYS_LOGGED: "Days logged",
-  RANGE_HEADING: `Last ${HISTORY_WEEKS} weeks`,
-  GRID_LABEL: `Meals over the last ${HISTORY_WEEKS} weeks`,
+  RANGE_HEADING: `${HISTORY_WEEKS} weeks`,
+  GRID_LABEL: `Meals over ${HISTORY_WEEKS} weeks`,
   LEGEND_LESS: "Less",
   LEGEND_MORE: "More",
   NOTHING_LOGGED: "nothing logged",
@@ -38,9 +38,20 @@ function getWeekdayIndex(dateStr) {
   return day === SUNDAY_INDEX ? DAYS_PER_WEEK - 1 : day - 1;
 }
 
-// Monday of the first column, so the last column is the week containing today.
-function getGridStart(today) {
-  return shiftDate(today, -getWeekdayIndex(today) - (HISTORY_WEEKS - 1) * DAYS_PER_WEEK);
+function getMondayOf(dateStr) {
+  return shiftDate(dateStr, -getWeekdayIndex(dateStr));
+}
+
+// Monday of the earliest week that can still be on the grid (today's week is then the last column).
+function getLoadStart(today) {
+  return shiftDate(getMondayOf(today), -(HISTORY_WEEKS - 1) * DAYS_PER_WEEK);
+}
+
+// The grid starts at the week of the first logged day (or today) and fills forward from there,
+// so it only rolls once there are HISTORY_WEEKS of history.
+function getGridStart(days, today) {
+  const firstDate = days.reduce((first, day) => (day.date < first ? day.date : first), today);
+  return getMondayOf(firstDate);
 }
 
 function pluralizeDays(count) {
@@ -142,6 +153,12 @@ function createStats(summaries, today) {
   ]);
 }
 
+function scrollToToday(scroller) {
+  const todayCell = scroller.querySelector('[aria-current="date"]');
+  const overflow = todayCell.getBoundingClientRect().right - scroller.getBoundingClientRect().right;
+  if (overflow > 0) scroller.scrollLeft += overflow;
+}
+
 function createHeader(onBackClick, signal) {
   const backButton = h(
     "button",
@@ -160,13 +177,15 @@ export function mountHistoryView(root, { onOpenDay, onBack }) {
   const controller = new AbortController();
   const { signal } = controller;
   const today = getLogicalDate();
-  const start = getGridStart(today);
+  const loadStart = getLoadStart(today);
   const title = h("h1", { class: "page-title" }, COPY.TITLE);
   const page = h("div", { class: "page" }, [title]);
 
   const showContent = (nodes) => page.replaceChildren(title, ...nodes);
 
-  const showHistory = (summaries) => {
+  const showHistory = (range) => {
+    const start = getGridStart(range.days, today);
+    const summaries = summarizeDays(range);
     const scroller = h("div", { class: "contrib__scroll" }, [
       createMonthRow(start),
       createGrid(start, summaries, today),
@@ -184,7 +203,7 @@ export function mountHistoryView(root, { onOpenDay, onBack }) {
       h("h2", { class: "section-heading" }, COPY.RANGE_HEADING),
       h("div", { class: "card contrib" }, [scroller, createLegend()]),
     ]);
-    scroller.scrollLeft = scroller.scrollWidth;
+    scrollToToday(scroller);
   };
 
   const showLoadError = (load) => {
@@ -201,9 +220,9 @@ export function mountHistoryView(root, { onOpenDay, onBack }) {
   const load = async () => {
     showContent([h("p", { class: "field__hint", role: "status" }, COPY.LOADING)]);
     try {
-      const range = await getDaysInRange(start, today);
+      const range = await getDaysInRange(loadStart, today);
       if (signal.aborted) return;
-      showHistory(summarizeDays(range));
+      showHistory(range);
     } catch (error) {
       if (!isTypedError(error)) throw error;
       if (!signal.aborted) showLoadError(load);
