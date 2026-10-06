@@ -43,7 +43,8 @@
       .meal-card__expand      chevron icon-button; rotates when aria-expanded="true"
       .meal-card__body        content under the header (aligned with the text column)
       .meal-card__actions     row of small buttons (Ate something else / Note / Photo)
-      .meal-card__fields      stacked fields (substitute, note, photo)
+      .meal-card__fields      text fields with the photo to their right
+      .meal-card__text-fields stacked substitute and note fields
     .check                    big round checkbox: <button class="check" role="checkbox" aria-checked>
     .check--substituted       purple fill when checked (aria-checked="true")
 
@@ -431,8 +432,15 @@
 
 .meal-card__fields {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: var(--space-3);
   padding-top: var(--space-3);
+}
+
+.meal-card__text-fields {
+  display: grid;
+  gap: var(--space-3);
 }
 
 /* Big round checkbox */

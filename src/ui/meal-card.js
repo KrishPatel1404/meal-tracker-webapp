@@ -157,6 +157,7 @@ export function createMealCard({ date, meal, log, onSaved }) {
     },
     onSave: persist,
   });
+  const textFields = h("div", { class: "meal-card__text-fields" }, [substitute.field, note.field]);
   const photoField = createPhotoField({
     date,
     ownerKey: meal.key,
@@ -211,7 +212,7 @@ export function createMealCard({ date, meal, log, onSaved }) {
             meal.notes.map((planNote) => h("li", {}, planNote)),
           ),
         h("div", { class: "meal-card__actions" }, [substituteButton, noteButton]),
-        h("div", { class: "meal-card__fields" }, [substitute.field, note.field, photoField]),
+        h("div", { class: "meal-card__fields" }, [textFields, photoField]),
       ]),
     ]),
   );
@@ -264,6 +265,8 @@ export function createMealCard({ date, meal, log, onSaved }) {
 
     substitute.field.hidden = !substituteOpen;
     note.field.hidden = !noteOpen;
+    // With no text field open, the photo moves into the first column.
+    textFields.hidden = !substituteOpen && !noteOpen;
     substituteButton.classList.toggle("btn--substitute", substituteOpen);
     substituteButton.classList.toggle("btn--secondary", !substituteOpen);
     substituteButton.setAttribute("aria-expanded", String(substituteOpen));
