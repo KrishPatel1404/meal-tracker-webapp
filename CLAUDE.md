@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Single-user, phone-first daily meal checklist. Vanilla JS + Vite, talks straight to Supabase (Postgres + Auth + Storage), hosted as a Render static site. `README.md` covers setup, the secret link and deploy.
+Single-user, phone-first daily meal checklist. Vanilla JS + Vite, talks straight to Supabase (Postgres + Auth + Storage), hosted as a Render static site. `README.md` covers setup and the secret link.
 
 ## Commands
 
