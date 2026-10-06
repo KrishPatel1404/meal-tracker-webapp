@@ -39,8 +39,6 @@
 
 ## 🚀 Setup
 
-Needs **Node 20.12+** (the e2e config uses `process.loadEnvFile`).
-
 ```sh
 npm ci
 cp .env.example .env
