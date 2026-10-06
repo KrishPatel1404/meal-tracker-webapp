@@ -29,7 +29,7 @@ export function getDayEntries({ days, mealLogs, extras }) {
     });
 }
 
-export const countSwaps = (meals) =>
+const countSwaps = (meals) =>
   meals.filter(({ status }) => status === MEAL_STATUS.SUBSTITUTED).length;
 
 // Totals across logged days. Meals eaten counts required meals (done or swapped), like the day score.
@@ -44,4 +44,15 @@ export function getRangeTotals(entries) {
     }),
     { workoutDays: 0, mealsEaten: 0, mealsRequired: 0, swaps: 0, extras: 0 },
   );
+}
+
+// Every meal across the entries' plan snapshots, in first-seen order, as the latest snapshot has it.
+export function getPlanMeals(entries) {
+  const mealsByKey = new Map();
+  for (const { day } of entries) {
+    for (const meal of day.plan_snapshot.meals) {
+      mealsByKey.set(meal.key, meal);
+    }
+  }
+  return [...mealsByKey.values()];
 }

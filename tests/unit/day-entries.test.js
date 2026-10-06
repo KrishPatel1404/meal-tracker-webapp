@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MEAL_STATUS } from "../../src/config.js";
-import { getDayEntries, getRangeTotals } from "../../src/export/day-entries.js";
+import { getDayEntries, getPlanMeals, getRangeTotals } from "../../src/export/day-entries.js";
 import { MEAL_PLAN } from "../../src/plan/meal-plan.js";
 
 const REST_DATE = "2001-03-04";
@@ -55,5 +55,31 @@ describe("getRangeTotals", () => {
     expect(totals.swaps).toBe(1);
     expect(totals.mealsEaten).toBe(0);
     expect(totals.mealsRequired).toBe(3);
+  });
+});
+
+describe("getPlanMeals", () => {
+  const entriesFor = (days) => getDayEntries({ days, mealLogs: [], extras: [] });
+
+  it("lists every plan meal, workout-only ones included, even on a rest day", () => {
+    const keys = getPlanMeals(entriesFor([restDay])).map((meal) => meal.key);
+    expect(keys).toEqual(MEAL_PLAN.meals.map((meal) => meal.key));
+  });
+
+  it("keeps first-seen order, adds meals from later plans and uses the latest wording", () => {
+    const [first, ...rest] = MEAL_PLAN.meals;
+    const laterPlan = {
+      ...MEAL_PLAN,
+      meals: [...rest, { ...first, name: "Breakfast" }, { ...first, key: "meal-6" }],
+    };
+    const laterDay = { ...workoutDay, plan_snapshot: laterPlan };
+
+    const meals = getPlanMeals(entriesFor([restDay, laterDay]));
+
+    expect(meals.map((meal) => meal.key)).toEqual([
+      ...MEAL_PLAN.meals.map((meal) => meal.key),
+      "meal-6",
+    ]);
+    expect(meals[0].name).toBe("Breakfast");
   });
 });

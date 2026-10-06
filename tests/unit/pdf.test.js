@@ -116,33 +116,63 @@ describe("buildPdf", () => {
       return pdfTextOf(await buildPdf({ days: [day], mealLogs, extras }, RANGE));
     }
 
-    it("prints the totals for the range, counting only required meals as eaten", async () => {
+    it("prints the totals as tiles, counting only required meals as eaten", async () => {
       const text = await buildSummaryText();
-      for (const line of [
-        "Days logged: 1 of 3",
-        "Workout days: 1",
-        "Planned meals eaten: 2 of 5 (40%)",
-        "Swapped for something else: 1",
-        "Extras: 1",
+      for (const tileText of [
+        "Planned meals eaten",
+        "2 of 5 meals",
+        "Workout days",
+        "1 of 3 days logged",
+        "Meals swapped",
       ]) {
-        expect(countTextDraws(text, line), line).toBe(1);
+        expect(countTextDraws(text, tileText), tileText).toBe(1);
       }
+      expect(countTextDraws(text, "40%"), "tile value plus the day's score cell").toBe(2);
     });
 
-    it("prints a table row for every date in the range, including unlogged ones", async () => {
+    it("draws a grid column for every date in the range, including unlogged ones", async () => {
       const text = await buildSummaryText();
-      for (const cell of ["Sun 4 Mar", "Mon 5 Mar", "Tue 6 Mar", "Workout", "2 of 5"]) {
-        expect(countTextDraws(text, cell), cell).toBe(1);
+      for (const header of ["Sun", "4 Mar", "Mon", "5 Mar", "Tue", "6 Mar"]) {
+        expect(countTextDraws(text, header), header).toBe(1);
       }
-      expect(countTextDraws(text, "Not logged")).toBe(2);
+      expect(countTextDraws(text, "No log"), "one per unlogged date").toBe(2);
+      expect(countTextDraws(text, "Workout")).toBe(1);
+      expect(countTextDraws(text, "Ate"), "meal 1 cell").toBe(1);
+      expect(countTextDraws(text, "Swap"), "meal 2 cell").toBe(1);
     });
 
-    it("lists the planned food for meals eaten as planned and the swap for the rest", async () => {
+    it("details only swaps, extras and notes, not meals eaten as planned", async () => {
       const text = await buildSummaryText();
-      const plannedFood = MEAL_PLAN.meals[0].foods.join(", ");
-      expect(countTextDraws(text, `Ate: ${plannedFood}`)).toBe(1);
       expect(countTextDraws(text, "Ate instead: Burrito")).toBe(1);
+      expect(countTextDraws(text, "Apple")).toBe(1);
       expect(countTextDraws(text, "Workout day - 40%")).toBe(1);
+      expect(countTextDraws(text, "Ate as planned"), "legend only").toBe(1);
+    });
+
+    it("prints a note even on a meal eaten as planned", async () => {
+      const noted = [{ ...mealLogs[0], note: "Extra egg" }];
+      const text = await pdfTextOf(
+        await buildPdf({ days: [day], mealLogs: noted, extras: [] }, RANGE),
+      );
+      expect(countTextDraws(text, "Note: Extra egg")).toBe(1);
+      expect(countTextDraws(text, "Ate as planned"), "legend plus the noted meal").toBe(2);
+    });
+
+    it("says so when nothing needs a closer look", async () => {
+      const text = await pdfTextOf(
+        await buildPdf({ days: [day], mealLogs: [mealLogs[0]], extras: [] }, RANGE),
+      );
+      expect(countTextDraws(text, "Everything eaten went to plan, with no extras or notes.")).toBe(
+        1,
+      );
+    });
+
+    it("lists each meal's food once in the plan section", async () => {
+      const text = await buildSummaryText();
+      for (const meal of MEAL_PLAN.meals.slice(0, 1)) {
+        expect(countTextDraws(text, meal.foods.join(", "))).toBe(1);
+      }
+      expect(countTextDraws(text, "Meal 3 (Preworkout) - workout days only")).toBe(1);
     });
   });
 
