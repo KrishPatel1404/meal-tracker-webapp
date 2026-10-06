@@ -10,7 +10,7 @@
 ![Render](https://img.shields.io/badge/hosted_on-Render-46e3b7?logo=render&logoColor=black)
 ![PWA](https://img.shields.io/badge/PWA-installable-5a0fc8?logo=pwa&logoColor=white)
 
-[Features](#-features) · [Stack](#-stack) · [Setup](#-setup) · [Commands](#-commands) · [Meal plan](#-changing-the-meal-plan) · [Secret link](#-the-secret-link)
+[Features](#-features) · [Screenshots](#-screenshots) · [Stack](#-stack) · [Setup](#-setup) · [Commands](#-commands) · [Meal plan](#-changing-the-meal-plan) · [Secret link](#-the-secret-link)
 
 </div>
 
@@ -26,6 +26,37 @@
 | **History**            | GitHub-style grid of the last 52 weeks, current streak, tap a square to edit that day |
 | **Export**             | Coach-ready PDF (week grid + swaps) or spreadsheet CSV, via the share sheet           |
 | **PWA**                | Installable, light and dark mode                                                      |
+
+## 📸 Screenshots
+
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/1-today-dark.png">
+  <img src="assets/screenshots/1-today-light.png" alt="Today's plate: workout toggle and the meal checklist" width="160">
+</picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/2-meal-details-and-photo-dark.png">
+  <img src="assets/screenshots/2-meal-details-and-photo-light.png" alt="A meal opened up with its foods, notes and a photo" width="160">
+</picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/3-past-rest-day-dark.png">
+  <img src="assets/screenshots/3-past-rest-day-light.png" alt="A past rest day, opened from history" width="160">
+</picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/4-history-streak-dark.png">
+  <img src="assets/screenshots/4-history-streak-light.png" alt="History: 52-week grid and current streak" width="160">
+</picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/5-photo-viewer-dark.png">
+  <img src="assets/screenshots/5-photo-viewer-light.png" alt="Full-screen meal photo" width="160">
+</picture>
+
+<br><br>
+
+<img src="assets/screenshots/6-coach-pdf.png" alt="Coach PDF export: stat tiles and the week grid" width="600">
+
+</div>
 
 ## 🧱 Stack
 
@@ -146,4 +177,5 @@ tests/
 .github/workflows/
   keepalive.yml        # pings Supabase every 3 days
 render.yaml            # Render static site blueprint
+assets/screenshots/    # README screenshots (light + dark)
 ```
