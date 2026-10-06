@@ -52,10 +52,6 @@
   <img src="assets/screenshots/5-photo-viewer-light.png" alt="Full-screen meal photo" width="160">
 </picture>
 
-<br><br>
-
-<img src="assets/screenshots/6-coach-pdf.png" alt="Coach PDF export: stat tiles and the week grid" width="600">
-
 </div>
 
 ## 🧱 Stack
