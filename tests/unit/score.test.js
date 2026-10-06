@@ -6,7 +6,6 @@ import {
   SHADE_LOW_MAX,
   SHADE_MID_MAX,
   getDayProgress,
-  getDayScore,
   getRequiredMeals,
   getShadeLevel,
   getStreak,
@@ -84,13 +83,13 @@ describe("getDayProgress", () => {
   });
 });
 
-describe("getDayScore", () => {
+describe("getDayProgress score", () => {
   it("is 0 with no logs", () => {
-    expect(getDayScore(restDay, [])).toBe(0);
+    expect(getDayProgress(restDay, []).score).toBe(0);
   });
 
   it("counts done meals against required meals on a rest day", () => {
-    expect(getDayScore(restDay, logs(MEAL_STATUS.DONE, ["meal-1"]))).toBeCloseTo(1 / 3);
+    expect(getDayProgress(restDay, logs(MEAL_STATUS.DONE, ["meal-1"])).score).toBeCloseTo(1 / 3);
   });
 
   it("counts substituted meals as done", () => {
@@ -98,7 +97,7 @@ describe("getDayScore", () => {
       { meal_key: "meal-1", status: MEAL_STATUS.DONE },
       { meal_key: "meal-2", status: MEAL_STATUS.SUBSTITUTED },
     ];
-    expect(getDayScore(restDay, mealLogs)).toBeCloseTo(2 / 3);
+    expect(getDayProgress(restDay, mealLogs).score).toBeCloseTo(2 / 3);
   });
 
   it("does not count pending meals", () => {
@@ -106,58 +105,60 @@ describe("getDayScore", () => {
       { meal_key: "meal-1", status: MEAL_STATUS.DONE },
       { meal_key: "meal-2", status: MEAL_STATUS.PENDING },
     ];
-    expect(getDayScore(restDay, mealLogs)).toBeCloseTo(1 / 3);
+    expect(getDayProgress(restDay, mealLogs).score).toBeCloseTo(1 / 3);
   });
 
   it("is 1 when all rest-day required meals are done", () => {
-    expect(getDayScore(restDay, logs(MEAL_STATUS.DONE, REST_REQUIRED_KEYS))).toBe(1);
+    expect(getDayProgress(restDay, logs(MEAL_STATUS.DONE, REST_REQUIRED_KEYS)).score).toBe(1);
   });
 
   it("is not 1 on a workout day when only the rest-day meals are done", () => {
-    expect(getDayScore(workoutDay, logs(MEAL_STATUS.DONE, REST_REQUIRED_KEYS))).toBeCloseTo(3 / 5);
+    expect(
+      getDayProgress(workoutDay, logs(MEAL_STATUS.DONE, REST_REQUIRED_KEYS)).score,
+    ).toBeCloseTo(3 / 5);
   });
 
   it("is 1 on a workout day when all five required meals are done", () => {
-    expect(getDayScore(workoutDay, logs(MEAL_STATUS.DONE, WORKOUT_REQUIRED_KEYS))).toBe(1);
+    expect(getDayProgress(workoutDay, logs(MEAL_STATUS.DONE, WORKOUT_REQUIRED_KEYS)).score).toBe(1);
   });
 
   it("ignores the optional snack: done snack adds nothing", () => {
     const mealLogs = logs(MEAL_STATUS.DONE, [SNACK_KEY]);
-    expect(getDayScore(restDay, mealLogs)).toBe(0);
+    expect(getDayProgress(restDay, mealLogs).score).toBe(0);
   });
 
   it("ignores the optional snack: skipping it does not lower a full score", () => {
-    expect(getDayScore(restDay, logs(MEAL_STATUS.DONE, REST_REQUIRED_KEYS))).toBe(1);
+    expect(getDayProgress(restDay, logs(MEAL_STATUS.DONE, REST_REQUIRED_KEYS)).score).toBe(1);
   });
 
   it("ignores hidden workout meals that were ticked before the toggle was turned off", () => {
     const mealLogs = logs(MEAL_STATUS.DONE, ["meal-1", "meal-3", "meal-4"]);
-    expect(getDayScore(restDay, mealLogs)).toBeCloseTo(1 / 3);
+    expect(getDayProgress(restDay, mealLogs).score).toBeCloseTo(1 / 3);
   });
 
   it("keeps hidden workout meal data counting again when the toggle is back on", () => {
     const mealLogs = logs(MEAL_STATUS.DONE, ["meal-1", "meal-3", "meal-4"]);
-    expect(getDayScore(workoutDay, mealLogs)).toBeCloseTo(3 / 5);
+    expect(getDayProgress(workoutDay, mealLogs).score).toBeCloseTo(3 / 5);
   });
 
   it("does not double count duplicate logs for the same meal", () => {
     const mealLogs = logs(MEAL_STATUS.DONE, ["meal-1", "meal-1", "meal-1"]);
-    expect(getDayScore(restDay, mealLogs)).toBeCloseTo(1 / 3);
+    expect(getDayProgress(restDay, mealLogs).score).toBeCloseTo(1 / 3);
   });
 
   it("ignores logs for meal keys that are not in the day's snapshot", () => {
-    expect(getDayScore(restDay, logs(MEAL_STATUS.DONE, ["meal-99"]))).toBe(0);
+    expect(getDayProgress(restDay, logs(MEAL_STATUS.DONE, ["meal-99"])).score).toBe(0);
   });
 
   it("scores against the day's own snapshot when the plan has changed", () => {
     const oldPlan = { meals: MEAL_PLAN.meals.slice(0, 2), footerNotes: [] };
     const day = { plan_snapshot: oldPlan, is_workout: false };
-    expect(getDayScore(day, logs(MEAL_STATUS.DONE, ["meal-1", "meal-2"]))).toBe(1);
+    expect(getDayProgress(day, logs(MEAL_STATUS.DONE, ["meal-1", "meal-2"])).score).toBe(1);
   });
 
   it("is 0 rather than NaN when a snapshot has no required meals", () => {
     const day = { plan_snapshot: { meals: [], footerNotes: [] }, is_workout: false };
-    expect(getDayScore(day, [])).toBe(0);
+    expect(getDayProgress(day, []).score).toBe(0);
   });
 });
 
@@ -208,8 +209,8 @@ describe("getShadeLevel", () => {
   });
 
   it("matches real scores: 1 of 3 required meals is level 1, 2 of 3 is level 2", () => {
-    const oneOfThree = getDayScore(restDay, logs(MEAL_STATUS.DONE, ["meal-1"]));
-    const twoOfThree = getDayScore(restDay, logs(MEAL_STATUS.DONE, ["meal-1", "meal-2"]));
+    const oneOfThree = getDayProgress(restDay, logs(MEAL_STATUS.DONE, ["meal-1"])).score;
+    const twoOfThree = getDayProgress(restDay, logs(MEAL_STATUS.DONE, ["meal-1", "meal-2"])).score;
     expect(getShadeLevel(oneOfThree)).toBe(SHADE_LEVEL.LOW);
     expect(getShadeLevel(twoOfThree)).toBe(SHADE_LEVEL.MID);
   });

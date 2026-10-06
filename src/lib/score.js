@@ -30,10 +30,6 @@ export function getDayProgress(day, mealLogs) {
   return { done: doneKeys.size, required: required.length, score };
 }
 
-export function getDayScore(day, mealLogs) {
-  return getDayProgress(day, mealLogs).score;
-}
-
 export function getShadeLevel(score) {
   if (score === null || score <= 0) return SHADE_LEVEL.NONE;
   if (score <= SHADE_LOW_MAX) return SHADE_LEVEL.LOW;

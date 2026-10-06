@@ -43,6 +43,13 @@ export function shiftDate(dateStr, deltaDays) {
   return formatLocalDate(date);
 }
 
+// Every date from fromDate to toDate, both included.
+export function listDates(fromDate, toDate) {
+  const dates = [];
+  for (let date = fromDate; date <= toDate; date = shiftDate(date, 1)) dates.push(date);
+  return dates;
+}
+
 // "Tue 6 Oct", or "Tue 6 Oct 2026" with the year.
 export function formatDayLabel(dateStr, { withYear = false } = {}) {
   const date = parseLocalDate(dateStr);

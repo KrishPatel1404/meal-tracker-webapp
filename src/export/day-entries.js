@@ -1,6 +1,6 @@
 import { MEAL_STATUS } from "../config.js";
 import { groupByDate } from "../lib/day.js";
-import { getDayScore, getVisibleMeals } from "../lib/score.js";
+import { getDayProgress, getVisibleMeals } from "../lib/score.js";
 
 export function getMealTitle(meal) {
   return meal.label ? `${meal.name} (${meal.label})` : meal.name;
@@ -22,9 +22,26 @@ export function getDayEntries({ days, mealLogs, extras }) {
       });
       return {
         day,
-        score: getDayScore(day, dayLogs),
+        progress: getDayProgress(day, dayLogs),
         meals,
         extras: extrasByDate.get(day.date) ?? [],
       };
     });
+}
+
+export const countSwaps = (meals) =>
+  meals.filter(({ status }) => status === MEAL_STATUS.SUBSTITUTED).length;
+
+// Totals across logged days. Meals eaten counts required meals (done or swapped), like the day score.
+export function getRangeTotals(entries) {
+  return entries.reduce(
+    (totals, { day, progress, meals, extras }) => ({
+      workoutDays: totals.workoutDays + (day.is_workout ? 1 : 0),
+      mealsEaten: totals.mealsEaten + progress.done,
+      mealsRequired: totals.mealsRequired + progress.required,
+      swaps: totals.swaps + countSwaps(meals),
+      extras: totals.extras + extras.length,
+    }),
+    { workoutDays: 0, mealsEaten: 0, mealsRequired: 0, swaps: 0, extras: 0 },
+  );
 }

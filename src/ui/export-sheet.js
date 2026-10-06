@@ -32,12 +32,12 @@ const MESSAGE = Object.freeze({
   READY: "",
 });
 
-async function buildFile(format, data) {
+async function buildFile(format, data, range) {
   if (format === FORMATS.CSV) {
     return new Blob([buildCsv(data)], { type: format.mimeType });
   }
   const { buildPdf } = await import("../export/pdf.js");
-  return buildPdf(data);
+  return buildPdf(data, range);
 }
 
 function downloadBlob(blob, fileName) {
@@ -157,7 +157,7 @@ export function openExportSheet() {
       const data = await getDaysInRange(from, to);
       if (data.days.length === 0) return MESSAGE.EMPTY;
       if (format === FORMATS.PDF) setStatus(MESSAGE.BUILDING_PDF);
-      const blob = await buildFile(format, data);
+      const blob = await buildFile(format, data, { from, to });
       await deliverFile(
         blob,
         `${FILE_PREFIX}_${from}_to_${to}.${format.extension}`,

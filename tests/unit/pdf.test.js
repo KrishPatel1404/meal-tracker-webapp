@@ -14,6 +14,17 @@ const DATE = "2001-03-04";
 const PHOTO_PATH = "user/2001-03-04/meal-1.jpg";
 
 const day = { date: DATE, is_workout: true, plan_snapshot: MEAL_PLAN };
+const SINGLE_DAY_RANGE = { from: DATE, to: DATE };
+
+async function pdfTextOf(blob) {
+  return new TextDecoder("latin1").decode(await blob.arrayBuffer());
+}
+
+// jsPDF writes each drawn string as "(text) Tj" and escapes parentheses with a backslash.
+function countTextDraws(pdfText, text) {
+  const escaped = text.replaceAll("(", "\\(").replaceAll(")", "\\)");
+  return pdfText.split(`(${escaped}) Tj`).length - 1;
+}
 
 async function startOf(blob) {
   return new TextDecoder().decode((await blob.arrayBuffer()).slice(0, PDF_MAGIC.length));
@@ -38,7 +49,7 @@ describe("buildPdf", () => {
     ];
     const extras = [{ date: DATE, description: "Ice cream", note: "treat", photo_path: null }];
 
-    const blob = await buildPdf({ days: [day], mealLogs, extras });
+    const blob = await buildPdf({ days: [day], mealLogs, extras }, SINGLE_DAY_RANGE);
 
     expect(blob.type).toBe(PDF_MIME_TYPE);
     expect(blob.size).toBeGreaterThan(0);
@@ -58,7 +69,7 @@ describe("buildPdf", () => {
       },
     ];
 
-    const blob = await buildPdf({ days: [day], mealLogs, extras: [] });
+    const blob = await buildPdf({ days: [day], mealLogs, extras: [] }, SINGLE_DAY_RANGE);
 
     expect(getPhotoUrl).toHaveBeenCalledWith(PHOTO_PATH);
     expect(blob.type).toBe(PDF_MIME_TYPE);
@@ -66,7 +77,7 @@ describe("buildPdf", () => {
   });
 
   it("builds a PDF for an empty range", async () => {
-    const blob = await buildPdf({ days: [], mealLogs: [], extras: [] });
+    const blob = await buildPdf({ days: [], mealLogs: [], extras: [] }, SINGLE_DAY_RANGE);
     expect(blob.size).toBeGreaterThan(0);
     expect(await startOf(blob)).toBe(PDF_MAGIC);
   });
@@ -76,20 +87,71 @@ describe("buildPdf", () => {
       ...day,
       date: `2001-04-${String(index + 1).padStart(2, "0")}`,
     }));
-    const single = await buildPdf({ days: [day], mealLogs: [], extras: [] });
-    const many = await buildPdf({ days, mealLogs: [], extras: [] });
+    const single = await buildPdf({ days: [day], mealLogs: [], extras: [] }, SINGLE_DAY_RANGE);
+    const many = await buildPdf(
+      { days, mealLogs: [], extras: [] },
+      { from: days[0].date, to: days.at(-1).date },
+    );
     expect(many.size).toBeGreaterThan(single.size);
     const text = new TextDecoder("latin1").decode(await many.arrayBuffer());
     expect(text.match(/\/Type\s*\/Page\b/g).length).toBeGreaterThan(1);
   });
 
+  describe("summary", () => {
+    const RANGE = { from: "2001-03-04", to: "2001-03-06" };
+    const mealLogs = [
+      { date: DATE, meal_key: "meal-1", status: MEAL_STATUS.DONE, note: null, photo_path: null },
+      {
+        date: DATE,
+        meal_key: "meal-2",
+        status: MEAL_STATUS.SUBSTITUTED,
+        substitute_text: "Burrito",
+        note: null,
+        photo_path: null,
+      },
+    ];
+    const extras = [{ date: DATE, description: "Apple", note: null, photo_path: null }];
+
+    async function buildSummaryText() {
+      return pdfTextOf(await buildPdf({ days: [day], mealLogs, extras }, RANGE));
+    }
+
+    it("prints the totals for the range, counting only required meals as eaten", async () => {
+      const text = await buildSummaryText();
+      for (const line of [
+        "Days logged: 1 of 3",
+        "Workout days: 1",
+        "Planned meals eaten: 2 of 5 (40%)",
+        "Swapped for something else: 1",
+        "Extras: 1",
+      ]) {
+        expect(countTextDraws(text, line), line).toBe(1);
+      }
+    });
+
+    it("prints a table row for every date in the range, including unlogged ones", async () => {
+      const text = await buildSummaryText();
+      for (const cell of ["Sun 4 Mar", "Mon 5 Mar", "Tue 6 Mar", "Workout", "2 of 5"]) {
+        expect(countTextDraws(text, cell), cell).toBe(1);
+      }
+      expect(countTextDraws(text, "Not logged")).toBe(2);
+    });
+
+    it("lists the planned food for meals eaten as planned and the swap for the rest", async () => {
+      const text = await buildSummaryText();
+      const plannedFood = MEAL_PLAN.meals[0].foods.join(", ");
+      expect(countTextDraws(text, `Ate: ${plannedFood}`)).toBe(1);
+      expect(countTextDraws(text, "Ate instead: Burrito")).toBe(1);
+      expect(countTextDraws(text, "Workout day - 40%")).toBe(1);
+    });
+  });
+
   describe("extra food titles", () => {
     const buildExtraText = async (description) => {
       const extras = [{ date: DATE, description, note: null, photo_path: null }];
-      const blob = await buildPdf({ days: [day], mealLogs: [], extras });
-      return new TextDecoder("latin1").decode(await blob.arrayBuffer());
+      const blob = await buildPdf({ days: [day], mealLogs: [], extras }, SINGLE_DAY_RANGE);
+      return pdfTextOf(blob);
     };
-    const countTextDraws = (pdfText, text) => pdfText.split(`(${text}) Tj`).length - 1;
 
     it("prints the fallback title for an empty description", async () => {
       const text = await buildExtraText("");

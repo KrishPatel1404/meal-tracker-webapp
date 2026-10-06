@@ -6,6 +6,7 @@ import {
   getNextResetTime,
   groupByDate,
   parseLocalDate,
+  listDates,
   shiftDate,
 } from "../../src/lib/day.js";
 
@@ -235,5 +236,24 @@ describe("groupByDate", () => {
 
   it("returns an empty map for no rows", () => {
     expect(groupByDate([]).size).toBe(0);
+  });
+});
+
+describe("listDates", () => {
+  it("lists every date from start to end, both included", () => {
+    expect(listDates("2001-02-27", "2001-03-02")).toEqual([
+      "2001-02-27",
+      "2001-02-28",
+      "2001-03-01",
+      "2001-03-02",
+    ]);
+  });
+
+  it("returns one date when start and end match", () => {
+    expect(listDates("2001-03-07", "2001-03-07")).toEqual(["2001-03-07"]);
+  });
+
+  it("returns nothing when start is after end", () => {
+    expect(listDates("2001-03-08", "2001-03-07")).toEqual([]);
   });
 });

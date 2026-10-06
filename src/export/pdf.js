@@ -2,9 +2,9 @@ import { jsPDF } from "jspdf";
 import { MEAL_STATUS, MIME_TYPE } from "../config.js";
 import { LoadError, NetworkError, toTypedError } from "../data/errors.js";
 import { getPhotoUrl } from "../data/photos.js";
-import { formatDayLabel } from "../lib/day.js";
+import { formatDayLabel, listDates } from "../lib/day.js";
 import { resizeToCanvas } from "../lib/image.js";
-import { getDayEntries, getMealTitle } from "./day-entries.js";
+import { countSwaps, getDayEntries, getMealTitle, getRangeTotals } from "./day-entries.js";
 
 const PAGE_MARGIN_MM = 15;
 const MM_PER_PT = 0.3528;
@@ -18,7 +18,7 @@ const PERCENT = 100;
 
 const FONT = "helvetica";
 const FONT_STYLE = Object.freeze({ NORMAL: "normal", BOLD: "bold" });
-const FONT_SIZE = Object.freeze({ TITLE: 20, DAY: 13, ENTRY: 10.5, DETAIL: 9.5 });
+const FONT_SIZE = Object.freeze({ TITLE: 20, SECTION: 15, DAY: 13, ENTRY: 10.5, DETAIL: 9.5 });
 const COLOR = Object.freeze({
   TEXT: [20, 20, 22],
   QUIET: [110, 110, 118],
@@ -35,6 +35,12 @@ const STATUS_LABEL = Object.freeze({
   [MEAL_STATUS.PENDING]: "Not ticked",
 });
 const EXTRA_LABEL = "Extra";
+const DAY_TYPE_LABEL = Object.freeze({ WORKOUT: "Workout", REST: "Rest" });
+const NOT_LOGGED_LABEL = "Not logged";
+const NO_VALUE = "-";
+const FOOD_SEPARATOR = ", ";
+const SUMMARY_HEADING = "Summary";
+const DETAIL_HEADING = "Day by day";
 export const EXTRA_FALLBACK_TITLE = "Extra food";
 const EMPTY_RANGE_TEXT = "No meals logged in this range.";
 const TITLE = "Meal log";
@@ -43,6 +49,15 @@ const THUMB_BOX_MM = 32;
 const THUMB_MAX_PX = 360;
 const THUMB_JPEG_QUALITY = 0.7;
 const THUMB_FORMAT = "JPEG";
+// Summary table columns, as x offsets from the left margin.
+const SUMMARY_COLUMNS = Object.freeze([
+  { title: "Day", xMm: 0 },
+  { title: "Training", xMm: 42 },
+  { title: "Meals eaten", xMm: 72 },
+  { title: "Swapped", xMm: 107 },
+  { title: "Extras", xMm: 132 },
+]);
+
 const PHOTO_MESSAGE = "Couldn't load a photo for the PDF.";
 
 // Helvetica in a PDF only has Latin-1 plus a few Windows-1252 punctuation marks (the ones phone
@@ -65,6 +80,8 @@ const getExtraTitle = ({ description }) =>
 const getLineHeightMm = (size) => size * MM_PER_PT * LINE_HEIGHT_RATIO;
 
 const formatDate = (dateStr) => formatDayLabel(dateStr, { withYear: true });
+const formatPercent = (share) => `${Math.round(share * PERCENT)}%`;
+const getDayTypeLabel = (isWorkout) => (isWorkout ? DAY_TYPE_LABEL.WORKOUT : DAY_TYPE_LABEL.REST);
 
 function drawThumbnail(bitmap) {
   const canvas = resizeToCanvas(bitmap, THUMB_MAX_PX);
@@ -147,6 +164,18 @@ function createPage(doc) {
     cursor.y += lineHeight;
   }
 
+  // Draws one line of cells, each starting at its own x offset.
+  function drawRow(cells, { size, style = FONT_STYLE.NORMAL, color = COLOR.TEXT }) {
+    const lineHeight = getLineHeightMm(size);
+    ensureSpace(lineHeight);
+    const baseline = cursor.y + lineHeight * BASELINE_RATIO;
+    setFont(size, style, color);
+    for (const { text, xMm } of cells) {
+      doc.text(toDrawableText(text), PAGE_MARGIN_MM + xMm, baseline);
+    }
+    cursor.y += lineHeight;
+  }
+
   function drawWrapped(text, { size, style = FONT_STYLE.NORMAL, color = COLOR.QUIET, indent = 0 }) {
     setFont(size, style, color);
     for (const line of doc.splitTextToSize(toDrawableText(text), contentWidth - indent)) {
@@ -173,6 +202,7 @@ function createPage(doc) {
     cursor,
     ensureSpace,
     drawLine,
+    drawRow,
     drawWrapped,
     drawRule,
     drawImage,
@@ -197,8 +227,9 @@ function drawEntry(page, { title, statusText, statusColor, details, thumbnail })
   page.gap(ENTRY_GAP_MM);
 }
 
-function getMealDetails({ log, status }) {
+function getMealDetails({ meal, log, status }) {
   const details = [];
+  if (status === MEAL_STATUS.DONE) details.push(`Ate: ${meal.foods.join(FOOD_SEPARATOR)}`);
   if (status === MEAL_STATUS.SUBSTITUTED && log.substitute_text) {
     details.push(`Ate instead: ${log.substitute_text}`);
   }
@@ -207,7 +238,7 @@ function getMealDetails({ log, status }) {
 }
 
 async function drawDay(page, entry) {
-  const { day, score, meals, extras } = entry;
+  const { day, progress, meals, extras } = entry;
   const thumbnails = await loadThumbnails([
     ...meals.map(({ log }) => log?.photo_path),
     ...extras.map((extra) => extra.photo_path),
@@ -217,7 +248,7 @@ async function drawDay(page, entry) {
   page.drawLine({
     left: formatDate(day.date),
     right: {
-      text: `${day.is_workout ? "Workout day - " : ""}${Math.round(score * PERCENT)}%`,
+      text: `${getDayTypeLabel(day.is_workout)} day - ${formatPercent(progress.score)}`,
       color: COLOR.QUIET,
     },
     size: FONT_SIZE.DAY,
@@ -246,7 +277,58 @@ async function drawDay(page, entry) {
   page.gap(SECTION_GAP_MM);
 }
 
-export async function buildPdf({ days, mealLogs, extras }) {
+function getSummaryCells(date, entry) {
+  const texts = entry
+    ? [
+        formatDayLabel(date),
+        getDayTypeLabel(entry.day.is_workout),
+        `${entry.progress.done} of ${entry.progress.required}`,
+        String(countSwaps(entry.meals)),
+        String(entry.extras.length),
+      ]
+    : [formatDayLabel(date), NOT_LOGGED_LABEL, NO_VALUE, NO_VALUE, NO_VALUE];
+  return SUMMARY_COLUMNS.map(({ xMm }, index) => ({ text: texts[index], xMm }));
+}
+
+function getTotalsLines(totals, loggedCount, rangeLength) {
+  const mealShare = totals.mealsRequired === 0 ? 0 : totals.mealsEaten / totals.mealsRequired;
+  return [
+    `Days logged: ${loggedCount} of ${rangeLength}`,
+    `Workout days: ${totals.workoutDays}`,
+    `Planned meals eaten: ${totals.mealsEaten} of ${totals.mealsRequired} (${formatPercent(mealShare)})`,
+    `Swapped for something else: ${totals.swaps}`,
+    `Extras: ${totals.extras}`,
+  ];
+}
+
+// One line per date in the range, so days with nothing logged still show up.
+function drawSummary(page, entries, { from, to }) {
+  const dates = listDates(from, to);
+  const entriesByDate = new Map(entries.map((entry) => [entry.day.date, entry]));
+  page.drawLine({ left: SUMMARY_HEADING, size: FONT_SIZE.SECTION, style: FONT_STYLE.BOLD });
+  page.gap(ENTRY_GAP_MM);
+  for (const line of getTotalsLines(getRangeTotals(entries), entries.length, dates.length)) {
+    page.drawLine({ left: line, size: FONT_SIZE.ENTRY });
+  }
+  page.gap(SECTION_GAP_MM);
+  page.drawRow(
+    SUMMARY_COLUMNS.map(({ title, xMm }) => ({ text: title, xMm })),
+    {
+      size: FONT_SIZE.DETAIL,
+      style: FONT_STYLE.BOLD,
+      color: COLOR.QUIET,
+    },
+  );
+  page.drawRule();
+  for (const date of dates) {
+    page.drawRow(getSummaryCells(date, entriesByDate.get(date)), { size: FONT_SIZE.ENTRY });
+  }
+  page.gap(SECTION_GAP_MM);
+}
+
+const toPdfBlob = (doc) => new Blob([doc.output("arraybuffer")], { type: MIME_TYPE.PDF });
+
+export async function buildPdf({ days, mealLogs, extras }, range) {
   const entries = getDayEntries({ days, mealLogs, extras });
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const page = createPage(doc);
@@ -254,16 +336,20 @@ export async function buildPdf({ days, mealLogs, extras }) {
   page.drawLine({ left: TITLE, size: FONT_SIZE.TITLE, style: FONT_STYLE.BOLD });
   if (entries.length === 0) {
     page.drawLine({ left: EMPTY_RANGE_TEXT, size: FONT_SIZE.ENTRY, color: COLOR.QUIET });
-  } else {
-    const range = [entries[0], entries.at(-1)].map(({ day }) => formatDate(day.date));
-    page.drawLine({
-      left: [...new Set(range)].join(" to "),
-      size: FONT_SIZE.ENTRY,
-      color: COLOR.QUIET,
-    });
+    return toPdfBlob(doc);
   }
+  page.drawLine({
+    left: [...new Set([range.from, range.to].map(formatDate))].join(" to "),
+    size: FONT_SIZE.ENTRY,
+    color: COLOR.QUIET,
+  });
   page.gap(SECTION_GAP_MM);
 
+  drawSummary(page, entries, range);
+  // Keeps the heading on the same page as the first day.
+  page.ensureSpace(getLineHeightMm(FONT_SIZE.SECTION) + getLineHeightMm(FONT_SIZE.DAY) * 2);
+  page.drawLine({ left: DETAIL_HEADING, size: FONT_SIZE.SECTION, style: FONT_STYLE.BOLD });
+  page.gap(ENTRY_GAP_MM);
   for (const entry of entries) await drawDay(page, entry);
-  return new Blob([doc.output("arraybuffer")], { type: MIME_TYPE.PDF });
+  return toPdfBlob(doc);
 }
