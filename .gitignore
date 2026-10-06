@@ -1,12 +1,11 @@
 node_modules/
 dist/
-.env
-.env.local
+.env*
+!.env.example
 test-results/
 playwright-report/
 .DS_Store
 .claude/
-.env.*.local
 coverage/
 *.log
 .idea/
