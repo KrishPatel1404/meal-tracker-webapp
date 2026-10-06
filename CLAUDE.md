@@ -46,4 +46,4 @@ Unit tests mock Supabase. E2E runs against the real project as the owner: `tests
 
 ## Accounts
 
-Personal project: GitHub `KrishPatel1404/meal-tracker-webapp` (use `-R KrishPatel1404/meal-tracker-webapp` with `gh`), Render "KP Workspace". Never use any Decoded / work account, email or workspace. Don't push without the owner's go-ahead.
+Personal project: GitHub `KrishPatel1404/meal-tracker-webapp` (use `-R KrishPatel1404/meal-tracker-webapp` with `gh`), Render "KP Workspace". Don't push without the owner's go-ahead.
