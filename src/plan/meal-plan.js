@@ -1,13 +1,13 @@
 // The meal plan. Edit this file to change the plan, then bump PLAN_VERSION.
 // Each logged day stores a snapshot of the plan it was logged against.
-export const PLAN_VERSION = "2026-10-06";
+export const PLAN_VERSION = "2026-10-06.2";
 
 export const MEAL_PLAN = {
   meals: [
     {
       key: "meal-1",
       name: "Meal 1",
-      label: "Overnight oats",
+      label: "",
       foods: ["3 whole eggs with 150 ml egg whites", "3 slices of toast"],
       notes: ["Choice of bread is up to you."],
       workoutOnly: false,

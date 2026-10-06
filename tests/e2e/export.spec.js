@@ -56,7 +56,7 @@ test("CSV and PDF exports download the logged week", async ({ app: page }) => {
   const lines = csv.bytes.toString("utf8").split("\r\n");
   expect(lines).toEqual([
     CSV_HEADER,
-    `${TEST_DATE},no,Meal 1 (Overnight oats),done,3 whole eggs with 150 ml egg whites; 3 slices of toast,,"Toast first, then ""eggs""",no`,
+    `${TEST_DATE},no,Meal 1,done,3 whole eggs with 150 ml egg whites; 3 slices of toast,,"Toast first, then ""eggs""",no`,
     expect.stringMatching(new RegExp(`^${TEST_DATE},no,Meal 2,pending,`)),
     expect.stringMatching(new RegExp(`^${TEST_DATE},no,Meal 5,pending,`)),
     expect.stringMatching(new RegExp(`^${TEST_DATE},no,Bedtime snack \\(Optional\\),pending,`)),

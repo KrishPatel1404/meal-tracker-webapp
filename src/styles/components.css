@@ -38,7 +38,7 @@
       .meal-card__header      grid: check | text | expand button
       .meal-card__text
       .meal-card__eyebrow     "MEAL 1"
-      .meal-card__title       "Overnight oats"
+      .meal-card__title       "Preworkout"
       .meal-card__summary     one-line food summary (truncated)
       .meal-card__substitute  substitute text (purple)
       .meal-card__expand      chevron icon-button; rotates when aria-expanded="true"

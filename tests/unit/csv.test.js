@@ -36,7 +36,7 @@ describe("buildCsv", () => {
   it("writes one row per visible meal on a rest day, hiding workout-only meals", () => {
     const rows = linesOf(buildCsv({ days: [restDay], mealLogs: [], extras: [] })).slice(1);
     expect(rows.map((row) => row.split(",")[2])).toEqual([
-      "Meal 1 (Overnight oats)",
+      "Meal 1",
       "Meal 2",
       "Meal 5",
       "Bedtime snack (Optional)",
@@ -63,7 +63,7 @@ describe("buildCsv", () => {
     const csv = buildCsv({ days: [restDay], mealLogs: [], extras: [] });
     const meal1 = mealRowsOf(csv, REST_DATE)[0];
     expect(meal1).toBe(
-      `${REST_DATE},no,Meal 1 (Overnight oats),pending,3 whole eggs with 150 ml egg whites; 3 slices of toast,,,no`,
+      `${REST_DATE},no,Meal 1,pending,3 whole eggs with 150 ml egg whites; 3 slices of toast,,,no`,
     );
   });
 
