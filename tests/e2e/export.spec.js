@@ -9,7 +9,11 @@ import {
 } from "./support/fixtures.js";
 
 const WEEK_START = "2001-03-01";
-const CSV_HEADER = "date,workout_day,meal,status,planned_food,substitute,note,has_photo";
+const CSV_HEADER = "Date,Day,Day type,Meal,Status,What I ate,Planned food,Note,Photo";
+const BOM = "\uFEFF";
+// The fixtures freeze the clock on a Wednesday rest day.
+const ROW_PREFIX = `${TEST_DATE},Wed,Rest,`;
+const MEAL_1_FOOD = "3 whole eggs with 150 ml egg whites; 3 slices of toast";
 const PDF_MAGIC = "%PDF-";
 
 // Without a share sheet the app falls back to a plain download, which Playwright can catch.
@@ -53,14 +57,16 @@ test("CSV and PDF exports download the logged week", async ({ app: page }) => {
 
   const csv = await exportAs(page, "Export CSV");
   expect(csv.name).toBe(`meal-log_${WEEK_START}_to_${TEST_DATE}.csv`);
-  const lines = csv.bytes.toString("utf8").split("\r\n");
+  const text = csv.bytes.toString("utf8");
+  expect(text.startsWith(BOM), "starts with a UTF-8 byte order mark for Excel").toBe(true);
+  const lines = text.slice(BOM.length).split("\r\n");
   expect(lines).toEqual([
     CSV_HEADER,
-    `${TEST_DATE},no,Meal 1,done,3 whole eggs with 150 ml egg whites; 3 slices of toast,,"Toast first, then ""eggs""",no`,
-    expect.stringMatching(new RegExp(`^${TEST_DATE},no,Meal 2,pending,`)),
-    expect.stringMatching(new RegExp(`^${TEST_DATE},no,Meal 5,pending,`)),
-    expect.stringMatching(new RegExp(`^${TEST_DATE},no,Bedtime snack \\(Optional\\),pending,`)),
-    `${TEST_DATE},no,Extra,extra,,Apple,,no`,
+    `${ROW_PREFIX}Meal 1,Ate as planned,${MEAL_1_FOOD},${MEAL_1_FOOD},"Toast first, then ""eggs""",No`,
+    expect.stringMatching(new RegExp(`^${ROW_PREFIX}Meal 2,Not ticked,,`)),
+    expect.stringMatching(new RegExp(`^${ROW_PREFIX}Meal 5,Not ticked,,`)),
+    expect.stringMatching(new RegExp(`^${ROW_PREFIX}Bedtime snack \\(Optional\\),Not ticked,,`)),
+    `${ROW_PREFIX}Extra,Extra,Apple,,,No`,
     "",
   ]);
 

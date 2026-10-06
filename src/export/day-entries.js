@@ -2,6 +2,18 @@ import { MEAL_STATUS } from "../config.js";
 import { groupByDate } from "../lib/day.js";
 import { getDayProgress, getVisibleMeals } from "../lib/score.js";
 
+// Plain-English labels shared by the CSV and PDF exports.
+export const STATUS_LABEL = Object.freeze({
+  [MEAL_STATUS.DONE]: "Ate as planned",
+  [MEAL_STATUS.SUBSTITUTED]: "Ate something else",
+  [MEAL_STATUS.PENDING]: "Not ticked",
+});
+export const EXTRA_LABEL = "Extra";
+const DAY_TYPE_LABEL = Object.freeze({ WORKOUT: "Workout", REST: "Rest" });
+
+export const getDayTypeLabel = (isWorkout) =>
+  isWorkout ? DAY_TYPE_LABEL.WORKOUT : DAY_TYPE_LABEL.REST;
+
 export function getMealTitle(meal) {
   return meal.label ? `${meal.name} (${meal.label})` : meal.name;
 }

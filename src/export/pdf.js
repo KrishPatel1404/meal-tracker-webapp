@@ -4,7 +4,15 @@ import { LoadError, NetworkError, toTypedError } from "../data/errors.js";
 import { getPhotoUrl } from "../data/photos.js";
 import { formatDayLabel, listDates } from "../lib/day.js";
 import { resizeToCanvas } from "../lib/image.js";
-import { getDayEntries, getMealTitle, getPlanMeals, getRangeTotals } from "./day-entries.js";
+import {
+  EXTRA_LABEL,
+  getDayEntries,
+  getDayTypeLabel,
+  getMealTitle,
+  getPlanMeals,
+  getRangeTotals,
+  STATUS_LABEL,
+} from "./day-entries.js";
 
 const PAGE_MARGIN_MM = 15;
 const MM_PER_PT = 0.3528;
@@ -44,11 +52,6 @@ const FILL = Object.freeze({
   NONE: null,
 });
 
-const STATUS_LABEL = Object.freeze({
-  [MEAL_STATUS.DONE]: "Ate as planned",
-  [MEAL_STATUS.SUBSTITUTED]: "Ate something else",
-  [MEAL_STATUS.PENDING]: "Not ticked",
-});
 // Short labels for the week grid's cells.
 const CELL_LABEL = Object.freeze({
   [MEAL_STATUS.DONE]: "Ate",
@@ -57,13 +60,11 @@ const CELL_LABEL = Object.freeze({
   OFF_PLAN: "-",
 });
 const LEGEND = Object.freeze([
-  { fill: FILL[MEAL_STATUS.DONE], text: "Ate as planned" },
-  { fill: FILL[MEAL_STATUS.SUBSTITUTED], text: "Ate something else" },
-  { fill: FILL.NONE, text: "Not ticked" },
+  { fill: FILL[MEAL_STATUS.DONE], text: STATUS_LABEL[MEAL_STATUS.DONE] },
+  { fill: FILL[MEAL_STATUS.SUBSTITUTED], text: STATUS_LABEL[MEAL_STATUS.SUBSTITUTED] },
+  { fill: FILL.NONE, text: STATUS_LABEL[MEAL_STATUS.PENDING] },
   { fill: FILL.OFF_PLAN, text: "Not on that day's plan" },
 ]);
-const EXTRA_LABEL = "Extra";
-const DAY_TYPE_LABEL = Object.freeze({ WORKOUT: "Workout", REST: "Rest" });
 const NOT_LOGGED_LABEL = "No log";
 const ROW_LABEL = Object.freeze({ TRAINING: "Training", EXTRAS: "Extras", SCORE: "Day score" });
 const FOOD_SEPARATOR = ", ";
@@ -123,7 +124,6 @@ const getLineHeightMm = (size) => size * MM_PER_PT * LINE_HEIGHT_RATIO;
 
 const formatDate = (dateStr) => formatDayLabel(dateStr, { withYear: true });
 const formatPercent = (share) => `${Math.round(share * PERCENT)}%`;
-const getDayTypeLabel = (isWorkout) => (isWorkout ? DAY_TYPE_LABEL.WORKOUT : DAY_TYPE_LABEL.REST);
 
 function drawThumbnail(bitmap) {
   const canvas = resizeToCanvas(bitmap, THUMB_MAX_PX);
@@ -341,9 +341,8 @@ const NOT_LOGGED_CELL = Object.freeze({ text: "", fill: FILL.OFF_PLAN });
 
 function getTrainingCell(entry) {
   if (!entry) return { text: NOT_LOGGED_LABEL, fill: FILL.OFF_PLAN, color: COLOR.QUIET };
-  return entry.day.is_workout
-    ? { text: DAY_TYPE_LABEL.WORKOUT, style: FONT_STYLE.BOLD }
-    : { text: DAY_TYPE_LABEL.REST, color: COLOR.QUIET };
+  const text = getDayTypeLabel(entry.day.is_workout);
+  return entry.day.is_workout ? { text, style: FONT_STYLE.BOLD } : { text, color: COLOR.QUIET };
 }
 
 function getMealCell(mealKey, entry) {

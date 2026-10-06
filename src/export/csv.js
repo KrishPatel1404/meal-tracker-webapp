@@ -1,23 +1,31 @@
 import { MEAL_STATUS } from "../config.js";
-import { getDayEntries, getMealTitle } from "./day-entries.js";
+import { formatWeekday } from "../lib/day.js";
+import {
+  EXTRA_LABEL,
+  getDayEntries,
+  getDayTypeLabel,
+  getMealTitle,
+  STATUS_LABEL,
+} from "./day-entries.js";
 
 const CSV_COLUMNS = Object.freeze([
-  "date",
-  "workout_day",
-  "meal",
-  "status",
-  "planned_food",
-  "substitute",
-  "note",
-  "has_photo",
+  "Date",
+  "Day",
+  "Day type",
+  "Meal",
+  "Status",
+  "What I ate",
+  "Planned food",
+  "Note",
+  "Photo",
 ]);
+// Excel only reads a CSV as UTF-8 (so "½" and accents survive) when it starts with a byte order mark.
+const UTF8_BOM = "﻿";
 const LINE_BREAK = "\r\n";
 const FIELD_SEPARATOR = ",";
 const FOOD_SEPARATOR = "; ";
-const EXTRA_MEAL_NAME = "Extra";
-const EXTRA_STATUS = "extra";
-const YES = "yes";
-const NO = "no";
+const YES = "Yes";
+const NO = "No";
 const NEEDS_QUOTING = /[",\r\n]/;
 // Spreadsheet apps run a cell that starts with one of these as a formula.
 const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
@@ -37,40 +45,51 @@ function toLine(row) {
   return CSV_COLUMNS.map((column) => escapeField(row[column])).join(FIELD_SEPARATOR);
 }
 
-function getMealRow(date, isWorkout, { meal, log, status }) {
+function getDayColumns(day) {
   return {
-    date,
-    workout_day: yesNo(isWorkout),
-    meal: getMealTitle(meal),
-    status,
-    planned_food: meal.foods.join(FOOD_SEPARATOR),
-    substitute: status === MEAL_STATUS.SUBSTITUTED ? log.substitute_text : "",
-    note: log?.note,
-    has_photo: yesNo(log?.photo_path),
+    Date: day.date,
+    Day: formatWeekday(day.date),
+    "Day type": getDayTypeLabel(day.is_workout),
   };
 }
 
-// The description of an unplanned extra goes in the substitute column: it is what was eaten.
-function getExtraRow(date, isWorkout, extra) {
+const EATEN_FOOD = Object.freeze({
+  [MEAL_STATUS.DONE]: ({ meal }) => meal.foods.join(FOOD_SEPARATOR),
+  [MEAL_STATUS.SUBSTITUTED]: ({ log }) => log.substitute_text,
+  [MEAL_STATUS.PENDING]: () => "",
+});
+
+function getMealRow(day, mealEntry) {
+  const { meal, log, status } = mealEntry;
   return {
-    date,
-    workout_day: yesNo(isWorkout),
-    meal: EXTRA_MEAL_NAME,
-    status: EXTRA_STATUS,
-    planned_food: "",
-    substitute: extra.description,
-    note: extra.note,
-    has_photo: yesNo(extra.photo_path),
+    ...getDayColumns(day),
+    Meal: getMealTitle(meal),
+    Status: STATUS_LABEL[status],
+    "What I ate": EATEN_FOOD[status](mealEntry),
+    "Planned food": meal.foods.join(FOOD_SEPARATOR),
+    Note: log?.note,
+    Photo: yesNo(log?.photo_path),
   };
 }
 
+function getExtraRow(day, extra) {
+  return {
+    ...getDayColumns(day),
+    Meal: EXTRA_LABEL,
+    Status: EXTRA_LABEL,
+    "What I ate": extra.description,
+    "Planned food": "",
+    Note: extra.note,
+    Photo: yesNo(extra.photo_path),
+  };
+}
+
+// One row per meal or extra, oldest day first.
 export function buildCsv({ days, mealLogs, extras }) {
-  const rows = getDayEntries({ days, mealLogs, extras }).flatMap((entry) => {
-    const { date, is_workout: isWorkout } = entry.day;
-    return [
-      ...entry.meals.map((mealEntry) => getMealRow(date, isWorkout, mealEntry)),
-      ...entry.extras.map((extra) => getExtraRow(date, isWorkout, extra)),
-    ];
-  });
-  return [CSV_COLUMNS.join(FIELD_SEPARATOR), ...rows.map(toLine)].join(LINE_BREAK) + LINE_BREAK;
+  const rows = getDayEntries({ days, mealLogs, extras }).flatMap((entry) => [
+    ...entry.meals.map((mealEntry) => getMealRow(entry.day, mealEntry)),
+    ...entry.extras.map((extra) => getExtraRow(entry.day, extra)),
+  ]);
+  const lines = [CSV_COLUMNS.join(FIELD_SEPARATOR), ...rows.map(toLine)];
+  return UTF8_BOM + lines.join(LINE_BREAK) + LINE_BREAK;
 }

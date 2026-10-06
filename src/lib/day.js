@@ -50,11 +50,16 @@ export function listDates(fromDate, toDate) {
   return dates;
 }
 
+// "Tue"
+export function formatWeekday(dateStr) {
+  return WEEKDAY_FORMAT.format(parseLocalDate(dateStr));
+}
+
 // "Tue 6 Oct", or "Tue 6 Oct 2026" with the year.
 export function formatDayLabel(dateStr, { withYear = false } = {}) {
   const date = parseLocalDate(dateStr);
   const dayMonth = (withYear ? DAY_MONTH_YEAR_FORMAT : DAY_MONTH_FORMAT).format(date);
-  return `${WEEKDAY_FORMAT.format(date)} ${dayMonth}`;
+  return `${formatWeekday(dateStr)} ${dayMonth}`;
 }
 
 // Map of date -> rows for that date, keeping the rows' order.

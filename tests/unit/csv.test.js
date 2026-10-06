@@ -3,10 +3,15 @@ import { MEAL_STATUS } from "../../src/config.js";
 import { buildCsv } from "../../src/export/csv.js";
 import { MEAL_PLAN } from "../../src/plan/meal-plan.js";
 
-const HEADER = "date,workout_day,meal,status,planned_food,substitute,note,has_photo";
+const HEADER = "Date,Day,Day type,Meal,Status,What I ate,Planned food,Note,Photo";
+const BOM = "\uFEFF";
 const CRLF = "\r\n";
 const REST_DATE = "2001-03-04";
 const WORKOUT_DATE = "2001-03-05";
+// Date, weekday and day type, the first three columns of every row.
+const REST_PREFIX = `${REST_DATE},Sun,Rest,`;
+const WORKOUT_PREFIX = `${WORKOUT_DATE},Mon,Workout,`;
+const MEAL_1_FOOD = "3 whole eggs with 150 ml egg whites; 3 slices of toast";
 
 const restDay = { date: REST_DATE, is_workout: false, plan_snapshot: MEAL_PLAN };
 const workoutDay = { date: WORKOUT_DATE, is_workout: true, plan_snapshot: MEAL_PLAN };
@@ -25,49 +30,60 @@ function mealLog(date, mealKey, fields) {
 }
 
 // Plain split is fine for assertions on rows that contain no quoted line breaks.
-const linesOf = (csv) => csv.split(CRLF).slice(0, -1);
+const linesOf = (csv) => csv.slice(BOM.length).split(CRLF).slice(0, -1);
 const mealRowsOf = (csv, prefix) => linesOf(csv).filter((line) => line.startsWith(prefix));
 
 describe("buildCsv", () => {
-  it("returns only the header for an empty range", () => {
-    expect(buildCsv(emptyData)).toBe(HEADER + CRLF);
+  it("returns only the header for an empty range, after a UTF-8 byte order mark", () => {
+    expect(buildCsv(emptyData)).toBe(BOM + HEADER + CRLF);
+  });
+
+  it("keeps non-ASCII plan text such as the half sign", () => {
+    expect(buildCsv({ days: [restDay], mealLogs: [], extras: [] })).toContain("\u00BD scoop");
   });
 
   it("writes one row per visible meal on a rest day, hiding workout-only meals", () => {
     const rows = linesOf(buildCsv({ days: [restDay], mealLogs: [], extras: [] })).slice(1);
-    expect(rows.map((row) => row.split(",")[2])).toEqual([
+    expect(rows.map((row) => row.split(",")[3])).toEqual([
       "Meal 1",
       "Meal 2",
       "Meal 5",
       "Bedtime snack (Optional)",
     ]);
-    expect(rows.every((row) => row.startsWith(`${REST_DATE},no,`))).toBe(true);
+    expect(rows.every((row) => row.startsWith(REST_PREFIX))).toBe(true);
     expect(rows.join("\n")).not.toContain("Preworkout");
   });
 
-  it("writes workout meals on a workout day and flags the day", () => {
+  it("writes workout meals on a workout day and labels the day type", () => {
     const csv = buildCsv({ days: [workoutDay], mealLogs: [], extras: [] });
-    expect(mealRowsOf(csv, `${WORKOUT_DATE},yes,`)).toHaveLength(MEAL_PLAN.meals.length);
+    expect(mealRowsOf(csv, WORKOUT_PREFIX)).toHaveLength(MEAL_PLAN.meals.length);
     expect(csv).toContain("Meal 3 (Preworkout)");
     expect(csv).toContain("Meal 4 (Post workout)");
   });
 
-  it("reports unlogged meals as pending and ignores logs of hidden meals", () => {
+  it("reports unlogged meals as not ticked and ignores logs of hidden meals", () => {
     const hiddenLog = mealLog(REST_DATE, "meal-3", { status: MEAL_STATUS.DONE });
     const csv = buildCsv({ days: [restDay], mealLogs: [hiddenLog], extras: [] });
     expect(csv).not.toContain("Meal 3");
-    expect(mealRowsOf(csv, REST_DATE).every((row) => row.includes(",pending,"))).toBe(true);
+    expect(mealRowsOf(csv, REST_DATE).every((row) => row.includes(",Not ticked,,"))).toBe(true);
   });
 
-  it("joins planned foods with '; ' and quotes them because they contain commas or text", () => {
+  it("joins planned foods with '; ' and leaves what was eaten empty when not ticked", () => {
     const csv = buildCsv({ days: [restDay], mealLogs: [], extras: [] });
     const meal1 = mealRowsOf(csv, REST_DATE)[0];
-    expect(meal1).toBe(
-      `${REST_DATE},no,Meal 1,pending,3 whole eggs with 150 ml egg whites; 3 slices of toast,,,no`,
-    );
+    expect(meal1).toBe(`${REST_PREFIX}Meal 1,Not ticked,,${MEAL_1_FOOD},,No`);
   });
 
-  it("keeps substitute text only for substituted meals and marks photos", () => {
+  it("fills what was eaten with the planned food for a meal eaten as planned", () => {
+    const logs = [mealLog(REST_DATE, "meal-1", { status: MEAL_STATUS.DONE })];
+    const meal1 = mealRowsOf(
+      buildCsv({ days: [restDay], mealLogs: logs, extras: [] }),
+      REST_DATE,
+    )[0];
+    expect(meal1).toBe(`${REST_PREFIX}Meal 1,Ate as planned,${MEAL_1_FOOD},${MEAL_1_FOOD},,No`);
+  });
+
+  it("puts the swap in what was eaten, ignores stale swap text and marks photos", () => {
     const logs = [
       mealLog(REST_DATE, "meal-1", {
         status: MEAL_STATUS.SUBSTITUTED,
@@ -81,8 +97,8 @@ describe("buildCsv", () => {
       }),
     ];
     const rows = mealRowsOf(buildCsv({ days: [restDay], mealLogs: logs, extras: [] }), REST_DATE);
-    expect(rows[0]).toMatch(/,substituted,.*; 3 slices of toast,Pancakes,,yes$/);
-    expect(rows[1]).toMatch(/,done,.*,,felt great,no$/);
+    expect(rows[0]).toBe(`${REST_PREFIX}Meal 1,Ate something else,Pancakes,${MEAL_1_FOOD},,Yes`);
+    expect(rows[1]).toMatch(/,Ate as planned,.*,felt great,No$/);
     expect(rows[1]).not.toContain("stale text");
   });
 
@@ -115,16 +131,16 @@ describe("buildCsv", () => {
     ];
     const rows = mealRowsOf(buildCsv({ days: [restDay], mealLogs: logs, extras }), REST_DATE);
     expect(rows[0], "substitute and note guarded").toMatch(
-      /,'=1\+1,"'=HYPERLINK\(""http:\/\/evil\.test"",""x""\)",no$/,
+      /,'=1\+1,.*,"'=HYPERLINK\(""http:\/\/evil\.test"",""x""\)",No$/,
     );
-    expect(rows[1], "leading plus guarded").toMatch(/,'\+44 call back,no$/);
+    expect(rows[1], "leading plus guarded").toMatch(/,'\+44 call back,No$/);
     expect(rows[2], "leading minus guarded, then quoted for the comma").toMatch(
-      /,"'-2kg, nice",no$/,
+      /,"'-2kg, nice",No$/,
     );
     const extraRows = mealRowsOf(buildCsv({ days: [restDay], mealLogs: [], extras }), REST_DATE);
     expect(extraRows.slice(-2), "only a leading trigger is guarded").toEqual([
-      `${REST_DATE},no,Extra,extra,,'@SUM(1+1),'\tsneaky,no`,
-      `${REST_DATE},no,Extra,extra,,Apple = good,a-ok,no`,
+      `${REST_PREFIX}Extra,Extra,'@SUM(1+1),,'\tsneaky,No`,
+      `${REST_PREFIX}Extra,Extra,Apple = good,,a-ok,No`,
     ]);
   });
 
@@ -134,9 +150,9 @@ describe("buildCsv", () => {
       { date: REST_DATE, description: "Apple", note: null, photo_path: null },
     ];
     const csv = buildCsv({ days: [restDay], mealLogs: [], extras });
-    expect(mealRowsOf(csv, `${REST_DATE},no,Extra,`)).toEqual([
-      `${REST_DATE},no,Extra,extra,,Ice cream,after dinner,yes`,
-      `${REST_DATE},no,Extra,extra,,Apple,,no`,
+    expect(mealRowsOf(csv, `${REST_PREFIX}Extra,`)).toEqual([
+      `${REST_PREFIX}Extra,Extra,Ice cream,,after dinner,Yes`,
+      `${REST_PREFIX}Extra,Extra,Apple,,,No`,
     ]);
   });
 
@@ -147,7 +163,7 @@ describe("buildCsv", () => {
       .slice(1)
       .map((row) => row.slice(0, REST_DATE.length));
     expect(dates).toEqual([...dates].sort());
-    expect(csv.indexOf(`${REST_DATE},no,Extra`)).toBeLessThan(csv.indexOf(WORKOUT_DATE));
+    expect(csv.indexOf(`${REST_PREFIX}Extra`)).toBeLessThan(csv.indexOf(WORKOUT_DATE));
   });
 
   it("uses each day's own plan snapshot, not the current plan", () => {
@@ -170,6 +186,6 @@ describe("buildCsv", () => {
       mealLogs: [],
       extras: [],
     });
-    expect(linesOf(csv)).toEqual([HEADER, `${REST_DATE},no,Old meal,pending,x,,,no`]);
+    expect(linesOf(csv)).toEqual([HEADER, `${REST_PREFIX}Old meal,Not ticked,,x,,No`]);
   });
 });
