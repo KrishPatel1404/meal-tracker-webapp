@@ -40,3 +40,29 @@ export const TABLES = Object.freeze({
   MEAL_LOGS: "meal_logs",
   EXTRAS: "extras",
 });
+
+export const PHOTO_URL_REFRESH_MARGIN_S = 60;
+// Signing requests made within this window go to storage as one batch.
+export const PHOTO_SIGN_BATCH_DELAY_MS = 0;
+
+export const MIME_TYPE = Object.freeze({
+  WEBP: "image/webp",
+  JPEG: "image/jpeg",
+  CSV: "text/csv",
+  PDF: "application/pdf",
+});
+
+export const PHOTO_EXTENSIONS = Object.freeze({
+  [MIME_TYPE.WEBP]: "webp",
+  [MIME_TYPE.JPEG]: "jpg",
+});
+export const MS_PER_SECOND = 1000;
+
+// Rows per range request. Must not exceed the project's PostgREST max-rows (Supabase default 1000),
+// because a page shorter than this is read as the last one.
+export const RANGE_PAGE_SIZE = 1000;
+
+export const DAY_CONFLICT_COLUMNS = "user_id,date";
+export const MEAL_LOG_CONFLICT_COLUMNS = "user_id,date,meal_key";
+
+export const SERVICE_WORKER_URL = "/sw.js";
