@@ -6,3 +6,8 @@ test-results/
 playwright-report/
 .DS_Store
 .claude/settings.local.json
+.env.*.local
+coverage/
+*.log
+.idea/
+.vscode/
