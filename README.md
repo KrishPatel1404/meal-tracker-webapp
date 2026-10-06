@@ -24,7 +24,7 @@
 | **Workout day toggle** | Adds Meal 3 and Meal 4 (their data stays if you switch it off)                        |
 | **3am rollover**       | The day rolls over at 3am device time                                                 |
 | **History**            | GitHub-style grid of the last 52 weeks, current streak, tap a square to edit that day |
-| **Export**             | CSV or PDF, through the phone's share sheet when it can                               |
+| **Export**             | Coach-ready PDF (week grid + swaps) or spreadsheet CSV, via the share sheet           |
 | **PWA**                | Installable, light and dark mode                                                      |
 
 ## 🧱 Stack
