@@ -2,8 +2,8 @@ import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/components.css";
 import { ROUTES } from "./config.js";
-import { ensureSession } from "./data/auth.js";
-import { AuthError, NetworkError } from "./data/errors.js";
+import { ensureSession, SESSION_STATE } from "./data/auth.js";
+import { isTypedError } from "./data/errors.js";
 import { getLogicalDate } from "./lib/day.js";
 import { mountDayView } from "./ui/today-view.js";
 import { mountHistoryView } from "./ui/history-view.js";
@@ -37,12 +37,12 @@ async function start() {
   const openToday = () => show(ROUTES.TODAY, getLogicalDate());
   try {
     const state = await ensureSession();
-    if (state === "needs-link") {
+    if (state === SESSION_STATE.NEEDS_LINK) {
       mountLinkScreen(root, { onSignedIn: openToday });
       return;
     }
   } catch (error) {
-    if (!(error instanceof AuthError || error instanceof NetworkError)) throw error;
+    if (!isTypedError(error)) throw error;
     mountLinkScreen(root, { onSignedIn: openToday, error });
     return;
   }
