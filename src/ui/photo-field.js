@@ -6,7 +6,8 @@ import { settleSave } from "./save-status.js";
 import { openSheet } from "./sheet.js";
 
 const COPY = Object.freeze({
-  ATTACH: "Photo",
+  CHOOSE: "Library",
+  TAKE: "Camera",
   ADDING: "Adding...",
   VIEWER_TITLE: "Photo",
   THUMB_ALT: "Photo, tap to enlarge",
@@ -18,19 +19,30 @@ const COPY = Object.freeze({
 });
 
 const OPEN_KEYS = ["Enter", " "];
+const CAPTURE_REAR_CAMERA = "environment";
+
+function buildFileInput(extraAttrs = {}) {
+  return h("input", {
+    type: "file",
+    accept: "image/*",
+    class: "visually-hidden",
+    ...extraAttrs,
+  });
+}
+
+function buildAttachTile(label, iconName, input) {
+  return h("label", { class: "photo-attach" }, [icon(iconName), label, input]);
+}
 
 export function createPhotoField({ date, ownerKey, photoPath, onChange }) {
   let path = photoPath ?? null;
   let uploading = false;
   let stopWatchingThumb = () => {};
 
-  const input = h("input", {
-    type: "file",
-    accept: "image/*",
-    class: "visually-hidden",
-    onchange: attachPhoto,
-  });
-  const attachTile = h("label", { class: "photo-attach" }, [icon("camera"), COPY.ATTACH, input]);
+  const chooseInput = buildFileInput();
+  const takeInput = buildFileInput({ capture: CAPTURE_REAR_CAMERA });
+  const chooseTile = buildAttachTile(COPY.CHOOSE, "image", chooseInput);
+  const takeTile = buildAttachTile(COPY.TAKE, "camera", takeInput);
   const busyTile = h("div", { class: "photo-attach", role: "status", hidden: true }, COPY.ADDING);
   const message = h("p", { class: "field__hint", role: "status", hidden: true });
   const root = h("div", { class: "photo-field" });
@@ -97,18 +109,18 @@ export function createPhotoField({ date, ownerKey, photoPath, onChange }) {
   }
 
   function render() {
-    attachTile.hidden = uploading || path !== null;
+    chooseTile.hidden = takeTile.hidden = uploading || path !== null;
     busyTile.hidden = !uploading;
     stopWatchingThumb();
     const thumb = path === null ? null : buildThumb();
-    root.replaceChildren(...[thumb, attachTile, busyTile, message].filter(Boolean));
+    root.replaceChildren(...[thumb, takeTile, chooseTile, busyTile, message].filter(Boolean));
   }
 
   async function compressAndUpload(file) {
     return uploadPhoto(date, ownerKey, await compressImage(file));
   }
 
-  async function attachPhoto() {
+  async function attachPhoto(input) {
     const [file] = input.files;
     if (!file) return;
     uploading = true;
@@ -134,9 +146,11 @@ export function createPhotoField({ date, ownerKey, photoPath, onChange }) {
     }
     path = null;
     render();
-    input.focus();
+    takeInput.focus();
     onChange(null);
   }
+
+  for (const input of [chooseInput, takeInput]) input.onchange = () => attachPhoto(input);
 
   render();
   return root;

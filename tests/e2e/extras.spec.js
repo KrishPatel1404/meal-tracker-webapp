@@ -28,7 +28,7 @@ test("extra food can be added, edited, given a photo and removed", async ({ app:
     ]);
 
   await row
-    .locator('input[type="file"]')
+    .locator('input[type="file"]:not([capture])')
     .setInputFiles(await createTestPhoto(page, { width: 800, height: 1200 }));
   await expect(row.locator(".photo-thumb__img")).toHaveAttribute("src", /token=/, {
     timeout: 20_000,
@@ -98,7 +98,7 @@ test("text typed before the insert returns is still saved", async ({ app: page }
   await expectSaved(page);
   await expect(descriptionField(row)).toHaveValue("Typed while saving");
   await expect(
-    row.locator('input[type="file"]'),
+    row.locator('input[type="file"]:not([capture])'),
     "photo appears once the row exists",
   ).toBeAttached();
 });

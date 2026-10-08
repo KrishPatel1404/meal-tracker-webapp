@@ -19,7 +19,7 @@ test("a meal photo is compressed, uploaded, shown, persisted and removable", asy
   const card = await expandMeal(page, "Meal 1");
   const photo = await createTestPhoto(page, { width: 2000, height: 1500 });
 
-  await card.locator('input[type="file"]').setInputFiles(photo);
+  await card.locator('input[type="file"]:not([capture])').setInputFiles(photo);
 
   const thumb = card.locator(".photo-thumb__img");
   await expect(thumb).toHaveAttribute("src", SIGNED_URL, { timeout: 20_000 });

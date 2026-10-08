@@ -86,7 +86,7 @@
     .photo-field              row: thumbnail and/or attach tile
     .photo-thumb  .photo-thumb__img  .photo-thumb__remove
     .photo-viewer__img        full photo in the viewer sheet (capped to the screen height)
-    .photo-attach             <label class="photo-attach"> + <input type="file" class="visually-hidden">
+    .photo-attach             <label class="photo-attach"> + <input type="file" class="visually-hidden"> (one with capture)
 
   Extras
     .extras                   list wrapper
@@ -187,6 +187,9 @@
 }
 .icon--camera {
   --icon: var(--icon-camera);
+}
+.icon--image {
+  --icon: var(--icon-image);
 }
 .icon--note {
   --icon: var(--icon-note);
